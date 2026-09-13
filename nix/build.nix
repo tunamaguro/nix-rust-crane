@@ -3,36 +3,23 @@
   pkgs,
   crane,
   rustToolchainFor,
-  crate ? null,
+  cargoPackage ? null,
   profile ? "release",
   bin ? null,
+  pname ? null,
   rustFlags ? null,
-  doCheck ? false,
+  doCheck ? true,
+  dontStrip ? false,
 }:
 let
   craneLib = crane.overrideToolchain rustToolchainFor;
   rustToolchain = rustToolchainFor pkgs;
 
-  commonCargoExtraArgs = lib.concatStringsSep " " (
-    [ "--locked" ]
-    ++ lib.optionals (crate != null) [
-      "-p"
-      (lib.escapeShellArg crate)
-    ]
-  );
-
-  buildCargoExtraArgs = lib.concatStringsSep " " (
-    [ commonCargoExtraArgs ]
-    ++ lib.optionals (bin != null) [
-      "--bin"
-      (lib.escapeShellArg bin)
-    ]
-  );
-
   commonArgs = {
     src = craneLib.cleanCargoSource ../.;
     cargoLock = ../Cargo.lock;
-    cargoExtraArgs = commonCargoExtraArgs;
+    strictDeps = true;
+    inherit doCheck dontStrip;
 
     env =
       {
@@ -41,50 +28,79 @@ let
       // lib.optionalAttrs (rustFlags != null) {
         RUSTFLAGS = rustFlags;
       };
-  }
-  // lib.optionalAttrs (crate != null) {
-    pname = crate;
   };
 
-  cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+  artifactArgs =
+    commonArgs
+    // {
+      cargoExtraArgs = "--locked --workspace";
+      # Keep dev/test dependencies in the shared workspace artifact set even
+      # when a final package explicitly disables its own checks.
+      doCheck = true;
+    };
+
+  cargoArtifacts = craneLib.buildDepsOnly artifactArgs;
+
+  packageCargoExtraArgs = lib.escapeShellArgs (
+    [ "--locked" ]
+    ++ lib.optionals (cargoPackage != null) [
+      "-p"
+      cargoPackage
+    ]
+  );
+
+  cargoBuildExtraArgs = lib.escapeShellArgs (
+    lib.optionals (bin != null) [
+      "--bin"
+      bin
+    ]
+  );
 
   crateInfo = craneLib.crateNameFromCargoToml {
     inherit (commonArgs) src;
   };
 
-  mainProgram =
-    if bin != null then
-      bin
-    else if crate != null then
-      crate
+  resolvedPname =
+    if pname != null then
+      pname
+    else if cargoPackage != null then
+      cargoPackage
     else
       crateInfo.pname;
+
+  resolvedMainProgram =
+    if bin != null then
+      bin
+    else if cargoPackage != null then
+      cargoPackage
+    else
+      crateInfo.pname;
+
+  packageArgs =
+    commonArgs
+    // {
+      inherit cargoArtifacts;
+      cargoExtraArgs = packageCargoExtraArgs;
+      pname = resolvedPname;
+    }
+    // lib.optionalAttrs (cargoBuildExtraArgs != "") {
+      inherit cargoBuildExtraArgs;
+    };
 in
 craneLib.buildPackage (
-  commonArgs
+  packageArgs
   // {
-    cargoExtraArgs = buildCargoExtraArgs;
-    inherit cargoArtifacts doCheck;
-
     passthru = {
       inherit
+        artifactArgs
         cargoArtifacts
         commonArgs
         craneLib
-        mainProgram
         rustToolchain
         ;
-
-      buildConfig = {
-        inherit
-          bin
-          crate
-          profile
-          rustFlags
-          ;
-      };
+      mainProgram = resolvedMainProgram;
     };
 
-    meta.mainProgram = mainProgram;
+    meta.mainProgram = resolvedMainProgram;
   }
 )
