@@ -1,3 +1,6 @@
 # direnv
 .direnv
 
+# Added by cargo
+/target
+
