@@ -13,12 +13,16 @@ let
   craneLib = crane.overrideToolchain rustToolchainFor;
   rustToolchain = rustToolchainFor pkgs;
 
-  cargoExtraArgs = lib.concatStringsSep " " (
+  commonCargoExtraArgs = lib.concatStringsSep " " (
     [ "--locked" ]
     ++ lib.optionals (crate != null) [
       "-p"
       (lib.escapeShellArg crate)
     ]
+  );
+
+  buildCargoExtraArgs = lib.concatStringsSep " " (
+    [ commonCargoExtraArgs ]
     ++ lib.optionals (bin != null) [
       "--bin"
       (lib.escapeShellArg bin)
@@ -28,7 +32,7 @@ let
   commonArgs = {
     src = craneLib.cleanCargoSource ../.;
     cargoLock = ../Cargo.lock;
-    inherit cargoExtraArgs doCheck;
+    cargoExtraArgs = commonCargoExtraArgs;
 
     env =
       {
@@ -59,7 +63,8 @@ in
 craneLib.buildPackage (
   commonArgs
   // {
-    inherit cargoArtifacts;
+    cargoExtraArgs = buildCargoExtraArgs;
+    inherit cargoArtifacts doCheck;
 
     passthru = {
       inherit

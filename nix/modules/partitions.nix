@@ -24,6 +24,7 @@
           ./packages.nix
           inputs.treefmt-nix.flakeModule
           ./formatter.nix
+          ./checks.nix
           ./devshells.nix
         ];
       };
