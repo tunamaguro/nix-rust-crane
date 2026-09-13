@@ -1,7 +1,7 @@
 {
   lib,
+  pkgs,
   crane,
-  rustToolchain,
   rustToolchainFor,
   crate ? null,
   profile ? "release",
@@ -11,6 +11,7 @@
 }:
 let
   craneLib = crane.overrideToolchain rustToolchainFor;
+  rustToolchain = rustToolchainFor pkgs;
 
   cargoExtraArgs = lib.concatStringsSep " " (
     [ "--locked" ]
@@ -67,7 +68,6 @@ craneLib.buildPackage (
         craneLib
         mainProgram
         rustToolchain
-        rustToolchainFor
         ;
 
       buildConfig = {
