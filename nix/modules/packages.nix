@@ -8,12 +8,7 @@
       ...
     }:
     let
-      mkApp = (import ../toolchain.nix { inherit inputs; } pkgs).override {
-        crate = "nix-rust-crane";
-        bin = "nix-rust-crane";
-        rustFlags = null;
-      };
-
+      mkApp = (import ../toolchain.nix { inherit inputs; } pkgs);
       release = mkApp.override {
         profile = "release";
       };
