@@ -23,43 +23,8 @@
       ];
 
       imports = [
-        flake-parts.flakeModules.partitions
+        ./nix/modules/packages.nix
+        ./nix/modules/partitions.nix
       ];
-
-      partitionedAttrs = {
-        checks = "dev";
-        devShells = "dev";
-        formatter = "dev";
-      };
-
-      partitions.dev = {
-        extraInputsFlake = ./nix/dev;
-
-        module =
-          { inputs, ... }:
-          {
-            imports = [
-              inputs.treefmt-nix.flakeModule
-              ./nix/modules/formatter.nix
-            ];
-
-            perSystem =
-              { config, pkgs, ... }:
-              let
-                rustToolchainFor =
-                  p:
-                  (inputs.rust-overlay.lib.mkRustBin { } p).fromRustupToolchainFile ./rust-toolchain.toml;
-
-                craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchainFor;
-              in
-              {
-                devShells.default = craneLib.devShell {
-                  packages = [
-                    config.treefmt.build.wrapper
-                  ];
-                };
-              };
-          };
-      };
     };
 }
