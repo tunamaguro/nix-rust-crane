@@ -1,10 +1,8 @@
-{ inputs, ... }:
 {
   perSystem =
-    { pkgs, ... }:
+    { config, ... }:
     let
-      rustToolchain =
-        (inputs.rust-overlay.lib.mkRustBin { } pkgs).fromRustupToolchainFile ../../rust-toolchain.toml;
+      rustToolchain = config.packages.release.passthru.rustToolchain;
     in
     {
       treefmt.programs = {

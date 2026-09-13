@@ -1,70 +1,42 @@
-{ inputs, lib, ... }:
+{ inputs, ... }:
 {
   perSystem =
-    { config, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
-      cfg = config.rustBuild;
-      inherit (import ../toolchain.nix { inherit inputs; } pkgs) craneLib;
-
-      cargoExtraArgs = lib.concatStringsSep " " (
-        [ "--locked" ]
-        ++ lib.optionals (cfg.crate != null) [
-          "-p"
-          (lib.escapeShellArg cfg.crate)
-        ]
-        ++ lib.optionals (cfg.bin != null) [
-          "--bin"
-          (lib.escapeShellArg cfg.bin)
-        ]
-      );
-
-      commonArgs = {
-        src = craneLib.cleanCargoSource ../..;
-        cargoLock = ../../Cargo.lock;
-        inherit cargoExtraArgs;
-
-        env = {
-          CARGO_PROFILE = cfg.profile;
-        }
-        // lib.optionalAttrs (cfg.rustFlags != null) {
-          RUSTFLAGS = cfg.rustFlags;
-        };
+      mkApp = (import ../toolchain.nix { inherit inputs; } pkgs).override {
+        crate = "nix-rust-crane";
+        bin = "nix-rust-crane";
+        rustFlags = null;
       };
 
-      cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+      release = mkApp.override {
+        profile = "release";
+      };
+
+      debug = mkApp.override {
+        profile = "dev";
+      };
+
+      mkFlakeApp = package: {
+        type = "app";
+        program = lib.getExe package;
+      };
     in
     {
-      options.rustBuild = {
-        crate = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
-          default = null;
-          description = "Cargo package to build with -p. Null leaves package selection to Cargo.";
-        };
-
-        profile = lib.mkOption {
-          type = lib.types.str;
-          default = "release";
-          description = "Cargo profile used by Crane for dependency and package builds.";
-        };
-
-        bin = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
-          default = null;
-          description = "Cargo binary target to build with --bin. Null leaves binary selection to Cargo.";
-        };
-
-        rustFlags = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
-          default = null;
-          description = "Optional value exported as RUSTFLAGS for dependency and package builds.";
-        };
+      packages = {
+        default = release;
+        inherit debug release;
       };
 
-      config.packages.default = craneLib.buildPackage (
-        commonArgs
-        // {
-          inherit cargoArtifacts;
-        }
-      );
+      apps = {
+        default = mkFlakeApp config.packages.release;
+        debug = mkFlakeApp config.packages.debug;
+        release = mkFlakeApp config.packages.release;
+      };
     };
 }

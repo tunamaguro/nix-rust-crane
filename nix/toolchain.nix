@@ -5,8 +5,9 @@ let
     p:
     (inputs.rust-overlay.lib.mkRustBin { } p).fromRustupToolchainFile ../rust-toolchain.toml;
 
-  craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchainFor;
+  rustToolchain = rustToolchainFor pkgs;
 in
-{
-  inherit rustToolchainFor craneLib;
+pkgs.callPackage ./build.nix {
+  crane = inputs.crane.mkLib pkgs;
+  inherit rustToolchain rustToolchainFor;
 }
