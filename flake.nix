@@ -10,11 +10,6 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    treefmt-nix = {
-      url = "github:numtide/treefmt-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
@@ -28,25 +23,43 @@
       ];
 
       imports = [
-        inputs.treefmt-nix.flakeModule
-        ./nix/modules/formatter.nix
+        flake-parts.flakeModules.partitions
       ];
 
-      perSystem =
-        { config, pkgs, ... }:
-        let
-          rustToolchainFor =
-            p:
-            (inputs.rust-overlay.lib.mkRustBin { } p).fromRustupToolchainFile ./rust-toolchain.toml;
+      partitionedAttrs = {
+        checks = "dev";
+        devShells = "dev";
+        formatter = "dev";
+      };
 
-          craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchainFor;
-        in
-        {
-          devShells.default = craneLib.devShell {
-            packages = [
-              config.treefmt.build.wrapper
+      partitions.dev = {
+        extraInputsFlake = ./nix/dev;
+
+        module =
+          { inputs, ... }:
+          {
+            imports = [
+              inputs.treefmt-nix.flakeModule
+              ./nix/modules/formatter.nix
             ];
+
+            perSystem =
+              { config, pkgs, ... }:
+              let
+                rustToolchainFor =
+                  p:
+                  (inputs.rust-overlay.lib.mkRustBin { } p).fromRustupToolchainFile ./rust-toolchain.toml;
+
+                craneLib = (inputs.crane.mkLib pkgs).overrideToolchain rustToolchainFor;
+              in
+              {
+                devShells.default = craneLib.devShell {
+                  packages = [
+                    config.treefmt.build.wrapper
+                  ];
+                };
+              };
           };
-        };
+      };
     };
 }
