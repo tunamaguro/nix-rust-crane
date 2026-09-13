@@ -25,6 +25,8 @@
 
         env = {
           CARGO_PROFILE = cfg.profile;
+        }
+        // lib.optionalAttrs (cfg.rustFlags != null) {
           RUSTFLAGS = cfg.rustFlags;
         };
       };
@@ -52,9 +54,9 @@
         };
 
         rustFlags = lib.mkOption {
-          type = lib.types.str;
-          default = "";
-          description = "Value exported as RUSTFLAGS for dependency and package builds.";
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "Optional value exported as RUSTFLAGS for dependency and package builds.";
         };
       };
 
