@@ -37,7 +37,7 @@ jobs:
       - name: Restore and save Nix store
         uses: nix-community/cache-nix-action@106bba72ed8e29c8357661199511ef07790175e9 # v7.0.1
         with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/flake.lock', 'Cargo.lock', 'rust-toolchain.toml') }}
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/flake.lock', '**/Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '**/.cargo/config', '**/.cargo/config.toml') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
 
       - name: Check flake

@@ -3,14 +3,14 @@
   perSystem =
     { config, ... }:
     let
-      package = config.packages.release;
-      inherit (package.passthru) craneLib commonArgs cargoArtifacts;
+      package = config.packages.debug;
+      inherit (package.passthru) commonArgs cargoArtifacts craneLib;
       src = commonArgs.src;
       checkArgs = commonArgs // { inherit cargoArtifacts; };
     in
     {
       checks = {
-        build = package;
+        build = config.packages.release;
 
         fmt = craneLib.cargoFmt {
           inherit src;
@@ -23,15 +23,7 @@
           }
         );
 
-        test = craneLib.cargoNextest (
-          checkArgs
-          // {
-            doCheck = true;
-            partitions = 1;
-            partitionType = "count";
-            cargoNextestPartitionsExtraArgs = "--no-tests=pass";
-          }
-        );
+        test = craneLib.cargoTest checkArgs;
 
         audit = craneLib.cargoAudit {
           inherit src;
