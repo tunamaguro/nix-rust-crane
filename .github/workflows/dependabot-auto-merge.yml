@@ -1,0 +1,83 @@
+name: Dependabot minor auto-merge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for CI
+        if: steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          run_id=""
+          for _ in $(seq 1 30); do
+            run_id="$(
+              gh run list \
+                --repo "$GITHUB_REPOSITORY" \
+                --workflow CI \
+                --event pull_request \
+                --commit "$HEAD_SHA" \
+                --limit 1 \
+                --json databaseId \
+                --jq '.[0].databaseId // empty'
+            )"
+
+            if [[ -n "$run_id" ]]; then
+              break
+            fi
+
+            sleep 10
+          done
+
+          if [[ -z "$run_id" ]]; then
+            echo "No CI workflow run found for $HEAD_SHA" >&2
+            exit 1
+          fi
+
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+
+      - name: Merge minor update
+        if: steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          current_head="$(gh pr view "$PR_URL" --json headRefOid --jq .headRefOid)"
+          if [[ "$current_head" != "$EXPECTED_HEAD_SHA" ]]; then
+            echo "PR head changed from $EXPECTED_HEAD_SHA to $current_head; refusing to merge" >&2
+            exit 1
+          fi
+
+          gh pr merge "$PR_URL" --squash --match-head-commit "$EXPECTED_HEAD_SHA"
