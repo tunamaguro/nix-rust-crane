@@ -4,9 +4,11 @@
     { config, ... }:
     let
       package = config.packages.debug;
-      inherit (package.passthru) commonArgs cargoArtifacts craneLib;
-      src = commonArgs.src;
-      checkArgs = commonArgs // { inherit cargoArtifacts; };
+      inherit (package.passthru) artifactArgs cargoArtifacts craneLib;
+      src = artifactArgs.src;
+      checkArgs =
+        builtins.removeAttrs artifactArgs [ "cargoBuildExtraArgs" ]
+        // { inherit cargoArtifacts; };
     in
     {
       checks = {

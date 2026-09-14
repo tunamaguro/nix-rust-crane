@@ -7,7 +7,7 @@
   profile ? "release",
   bin ? null,
   pname ? null,
-  cargoBuildExtraArgs?null,
+  cargoBuildExtraArgs ? "",
   rustFlags ? null,
   doCheck ? true,
   dontStrip ? false,
@@ -20,7 +20,7 @@ let
     src = craneLib.cleanCargoSource ../.;
     cargoLock = ../Cargo.lock;
     strictDeps = true;
-    inherit cargoBuildExtraArgs doCheck dontStrip;
+    inherit doCheck dontStrip;
 
     env =
       {
@@ -31,7 +31,20 @@ let
       };
   };
 
-  cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+  artifactArgs =
+    commonArgs
+    // {
+      cargoExtraArgs = lib.escapeShellArgs [
+        "--locked"
+        "--workspace"
+      ];
+      inherit cargoBuildExtraArgs;
+      # Keep dev/test dependencies in the shared workspace artifact set even
+      # when a final package explicitly disables its own checks.
+      doCheck = true;
+    };
+
+  cargoArtifacts = craneLib.buildDepsOnly artifactArgs;
 
   packageCargoExtraArgs = lib.escapeShellArgs (
     [ "--locked" ]
@@ -39,11 +52,7 @@ let
       "-p"
       cargoPackage
     ]
-  );
-
-  packageCargoBuildExtraArgs = lib.escapeShellArgs (
-  [cargoBuildExtraArgs]++
-    lib.optionals (bin != null) [
+    ++ lib.optionals (bin != null) [
       "--bin"
       bin
     ]
@@ -72,18 +81,17 @@ let
   packageArgs =
     commonArgs
     // {
-      inherit cargoArtifacts;
+      inherit cargoArtifacts cargoBuildExtraArgs;
       pname = resolvedPname;
       cargoExtraArgs = packageCargoExtraArgs;
-      cargoBuildExtraArgs = packageCargoBuildExtraArgs;
-    }
-   ;
+    };
 in
 craneLib.buildPackage (
   packageArgs
   // {
     passthru = {
       inherit
+        artifactArgs
         cargoArtifacts
         commonArgs
         craneLib
