@@ -8,13 +8,14 @@
       ...
     }:
     let
-      mkPackage = (import ../toolchain.nix { inherit inputs; } pkgs);
-      release = mkPackage.override {
+      mkPackage = import ../toolchain.nix { inherit inputs; };
+      app = mkPackage pkgs;
+      release = app.override {
         profile = "release";
         dontStrip = false;
       };
 
-      debug = mkPackage.override {
+      debug = app.override {
         profile = "dev";
         dontStrip = true;
       };
