@@ -31,7 +31,7 @@ let
       };
   };
 
-  artifactArgs =
+  cargoArtifacts = craneLib.buildDepsOnly (
     commonArgs
     // {
       cargoExtraArgs = lib.escapeShellArgs [
@@ -42,9 +42,8 @@ let
       # Keep dev/test dependencies in the shared workspace artifact set even
       # when a final package explicitly disables its own checks.
       doCheck = true;
-    };
-
-  cargoArtifacts = craneLib.buildDepsOnly artifactArgs;
+    }
+  );
 
   packageCargoExtraArgs = lib.escapeShellArgs (
     [ "--locked" ]
@@ -91,7 +90,6 @@ craneLib.buildPackage (
   // {
     passthru = {
       inherit
-        artifactArgs
         cargoArtifacts
         commonArgs
         craneLib
