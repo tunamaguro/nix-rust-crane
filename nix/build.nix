@@ -11,6 +11,7 @@
   rustFlags ? null,
   doCheck ? true,
   dontStrip ? false,
+  doInstallCargoArtifacts ? false,
 }:
 let
   craneLib = crane.overrideToolchain rustToolchainFor;
@@ -80,7 +81,11 @@ let
   packageArgs =
     commonArgs
     // {
-      inherit cargoArtifacts cargoBuildExtraArgs;
+      inherit
+        cargoArtifacts
+        cargoBuildExtraArgs
+        doInstallCargoArtifacts
+        ;
       pname = resolvedPname;
       cargoExtraArgs = packageCargoExtraArgs;
     };
