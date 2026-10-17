@@ -21,6 +21,10 @@
           enable = true;
           includes = [ "*.toml" ];
         };
+
+        nixfmt = {
+          enable = true;
+        };
       };
     };
 }

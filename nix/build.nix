@@ -11,6 +11,8 @@
   rustFlags ? null,
   doCheck ? true,
   dontStrip ? false,
+  doInstallCargoArtifacts ? false,
+  installCargoArtifactsMode ? "use-zstd",
 }:
 let
   craneLib = crane.overrideToolchain rustToolchainFor;
@@ -22,13 +24,12 @@ let
     strictDeps = true;
     inherit doCheck dontStrip;
 
-    env =
-      {
-        CARGO_PROFILE = profile;
-      }
-      // lib.optionalAttrs (rustFlags != null) {
-        RUSTFLAGS = rustFlags;
-      };
+    env = {
+      CARGO_PROFILE = profile;
+    }
+    // lib.optionalAttrs (rustFlags != null) {
+      RUSTFLAGS = rustFlags;
+    };
   };
 
   cargoArtifacts = craneLib.buildDepsOnly (
@@ -77,13 +78,16 @@ let
     else
       crateInfo.pname;
 
-  packageArgs =
-    commonArgs
-    // {
-      inherit cargoArtifacts cargoBuildExtraArgs;
-      pname = resolvedPname;
-      cargoExtraArgs = packageCargoExtraArgs;
-    };
+  packageArgs = commonArgs // {
+    inherit
+      cargoArtifacts
+      cargoBuildExtraArgs
+      doInstallCargoArtifacts
+      installCargoArtifactsMode
+      ;
+    pname = resolvedPname;
+    cargoExtraArgs = packageCargoExtraArgs;
+  };
 in
 craneLib.buildPackage (
   packageArgs
